@@ -3,6 +3,9 @@ import functools
 import operator
 import colorsys
 import imageio
+import skimage
+import cv2
+from skimage import io, util
 
 
 def img2vector(image):
@@ -68,52 +71,53 @@ def image_preprocess(original, hinted_image):
     return colorIm, ntscIm
 
 
+def color_space_conversion(gray, color):
+    gray = gray.astype(float) / 255
+    color = color.astype(float) / 255
+    (Y_gray, _, _) = colorsys.rgb_to_yiq(gray[:, :, 0], gray[:, :, 1], gray[:, :, 2])
+    (_, I_gray, Q_gray) = colorsys.rgb_to_yiq(gray[:, :, 0], gray[:, :, 1], gray[:, :, 2])
+    (Y_color, _, _) = colorsys.rgb_to_yiq(color[:, :, 0], color[:, :, 1], color[:, :, 2])
+    (_, I_color, Q_color) = colorsys.rgb_to_yiq(color[:, :, 0], color[:, :, 1], color[:, :, 2])
+    yiq_gray = np.zeros(gray.shape)
+    yiq_color = np.zeros(color.shape)
+    yiq_gray[:, :, 0] = Y_gray
+    yiq_gray[:, :, 1] = I_gray
+    yiq_gray[:, :, 2] = Q_gray
+    yiq_color[:, :, 0] = Y_color
+    yiq_color[:, :, 1] = I_color
+    yiq_color[:, :, 2] = Q_color
+    return yiq_gray, yiq_color
+
+
 def error_patch(target, source):
     mean = 0.5 * np.abs(np.mean(source) - np.mean(target))
     std = 0.5 * np.abs(np.std(source) - np.std(target))
     return mean + std
 
 
-def padarray(A, patch_size):
-    t2 = A.shape[0] % patch_size[1]
-    return np.pad(A, pad_width=(0, t2), mode='constant')
+def create_patches(img, patch_width, patch_height):
+    # Trim right and bottom borders if image size is not
+    # an integer multiple of patch size
+    nrows, ncols = patch_height, patch_width
+    trimmed = img[:img.shape[0] // nrows * nrows, :img.shape[1] // ncols * ncols]
+
+    # # Create folder to store results if necessary
+    # patch_dir = os.path.join(folder, 'Patched Image')
+    # if not os.path.isdir(patch_dir):
+    #     os.mkdir(patch_dir)
+
+    # Generate patches and save them to disk
+    patches = util.view_as_blocks(trimmed, (nrows, ncols))
+    # for i in range(patches.shape[0]):
+    #     for j in range(patches.shape[1]):
+    #         patch = patches[i, j, :, :]
+    #         patch_name = f'patch_{i:02}_{j:02}.png'
+    #         io.imsave(os.path.join(patch_dir, patch_name), patch)
+
+    return patches
 
 
-def extract_patches(a, patch_size):
-    sz = a.itemsize
-    h1, w1 = a.shape
-    if h1 % patch_size[0] != 0 or w1 % patch_size[1] != 0:
-        a = padarray(a, patch_size)
-    h, w = a.shape
-    bh, bw = patch_size
-    shape = (h // bh, w // bw, bh, bw)
-    strides = sz * np.array([w * bh, bw, w, 1])
-    blocks = np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
-    return blocks
-
-
-
-
-if __name__ == '__main__':
-    patch_size = 3
-    x_im = imageio.imread('baby.bmp')
-    x_hint = imageio.imread('baby_marked.bmp')
-    colorImage, ntscImage = image_preprocess(x_im, x_hint)
-    print(colorImage.shape, ntscImage.shape)
-
-    M = x_im.shape[0] // patch_size
-    N = x_im.shape[1] // patch_size
-    # grid = np.arange(M * N).reshape((M, N))
-    # print(grid.shape)
-    # print(grid)
-    luminance_image = ntscImage[:, :, 0]
-    print(luminance_image.shape)
-    luminance_image_patches = extract_patches(luminance_image, (3,3))
-    print(luminance_image_patches[0][0])
-    hint_image_patches = extract_patches(colorImage, (3,3))
-    print(hint_image_patches[0][0])
-    grid = np.zeros((M, N))
-    for i in range(M):
-        for j in range(N):
-            grid[i][j] = error_patch(luminance_image_patches[i][j], hint_image_patches[i][j] )
-    print(grid[0][0])
+def reconstruct_image(patches):
+    img_height = patches.shape[0] * patches.shape[2]
+    img_width = patches.shape[1] * patches.shape[3]
+    return patches.transpose(0, 2, 1, 3).reshape(img_height, img_width)
