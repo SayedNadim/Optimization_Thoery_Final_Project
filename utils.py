@@ -87,6 +87,8 @@ if __name__ == '__main__':
     # print(array.shape)
     # image = vecotr2img(array, x_im.shape)
     # print(image.shape)
+    x_im = np.resize(x_im, (256, 256))
+    x_hint = np.resize(x_hint, (256, 256))
     colorImage, ntscImage = image_preprocess(x_im, x_hint)
     # print(colorImage.shape, ntscImage.shape)
     # p_h, p_w = 3,3
