@@ -74,6 +74,22 @@ def error_patch(target, source):
     return mean + std
 
 
+def padarray(A, patch_size):
+    t2 = A.shape[0] % patch_size[1]
+    return np.pad(A, pad_width=(0, t2), mode='constant')
+
+
+def extract_patches(a, patch_size):
+    sz = a.itemsize
+    h1, w1 = a.shape
+    if h1 % patch_size[0] != 0 or w1 % patch_size[1] != 0:
+        a = padarray(a, patch_size)
+    h, w = a.shape
+    bh, bw = patch_size
+    shape = (h // bh, w // bw, bh, bw)
+    strides = sz * np.array([w * bh, bw, w, 1])
+    blocks = np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+    return blocks
 
 
 
@@ -87,8 +103,6 @@ if __name__ == '__main__':
     # print(array.shape)
     # image = vecotr2img(array, x_im.shape)
     # print(image.shape)
-    x_im = np.resize(x_im, (256, 256))
-    x_hint = np.resize(x_hint, (256, 256))
     colorImage, ntscImage = image_preprocess(x_im, x_hint)
     # print(colorImage.shape, ntscImage.shape)
     # p_h, p_w = 3,3
@@ -101,3 +115,5 @@ if __name__ == '__main__':
     # print(grid)
     luminance_image = ntscImage[:, :, 0]
     print(luminance_image.shape)
+    luminance_image_patches = extract_patches(luminance_image, (3,3))
+    print(luminance_image_patches)
