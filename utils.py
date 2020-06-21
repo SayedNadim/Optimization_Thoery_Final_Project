@@ -93,27 +93,27 @@ def extract_patches(a, patch_size):
 
 
 
+
 if __name__ == '__main__':
     patch_size = 3
-    solution_space = 40
     x_im = imageio.imread('baby.bmp')
     x_hint = imageio.imread('baby_marked.bmp')
-    # print(x_im.shape)
-    # array = img2vector(x_im)
-    # print(array.shape)
-    # image = vecotr2img(array, x_im.shape)
-    # print(image.shape)
     colorImage, ntscImage = image_preprocess(x_im, x_hint)
-    # print(colorImage.shape, ntscImage.shape)
-    # p_h, p_w = 3,3
-    # tiles = [x_im[x:x + p_h, y:y + p_w] for x in range(0, x_im.shape[0], p_h) for y in range(0, x_im.shape[1], p_w)]
+    print(colorImage.shape, ntscImage.shape)
 
     M = x_im.shape[0] // patch_size
     N = x_im.shape[1] // patch_size
-    grid = np.arange(M * N).reshape((M, N))
+    # grid = np.arange(M * N).reshape((M, N))
     # print(grid.shape)
     # print(grid)
     luminance_image = ntscImage[:, :, 0]
     print(luminance_image.shape)
     luminance_image_patches = extract_patches(luminance_image, (3,3))
-    print(luminance_image_patches)
+    print(luminance_image_patches[0][0])
+    hint_image_patches = extract_patches(colorImage, (3,3))
+    print(hint_image_patches[0][0])
+    grid = np.zeros((M, N))
+    for i in range(M):
+        for j in range(N):
+            grid[i][j] = error_patch(luminance_image_patches[i][j], hint_image_patches[i][j] )
+    print(grid[0][0])
