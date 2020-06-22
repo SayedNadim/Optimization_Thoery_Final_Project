@@ -1,11 +1,13 @@
 from HarmonySearch import HarmonyCore, objective_function
 from utils import *
+import numpy as np
+
 
 patch_size = 3
-x_im = imageio.imread('tiger.jpg')
-x_hint = imageio.imread('tiger_color.jpg')
-x_im = np.resize(x_im, (32, 32, 3))
-x_hint = np.resize(x_hint, (32, 32, 3))
+x_im = imageio.imread('baby.bmp')
+x_hint = imageio.imread('baby_marked.bmp')
+x_im = np.resize(x_im, (16, 16, 3))
+x_hint = np.resize(x_hint, (16, 16, 3))
 yiq_gray, yiq_color = color_space_conversion(x_im, x_hint)
 M = x_im.shape[0] // patch_size
 N = x_im.shape[1] // patch_size
@@ -27,6 +29,7 @@ color_array = []
 # print(len(gray_array))
 
 best_values = []
+errors = []
 for i in range(M):
     for j in range(N):
         of = objective_function(yiq_gray_patches[i][j], yiq_color_patches[i][j], sample_size=6, weight_decimal=2, )
@@ -35,8 +38,9 @@ for i in range(M):
         run harmony
         hs.run()
         '''
-        hmm_vector, hmm_err_list, err_idx = hs.run()
+        hmm_vector, hmm_err_list, err_idx, error = hs.run()
         best_values.append(hmm_vector[err_idx])
+        errors.append(error)
 
         '''
         then you can get (hmm_vector,hmm_err_list,err_idx) after hs return.
@@ -49,8 +53,9 @@ for i in range(M):
 
 best_values = np.reshape(best_values, (M, N, patch_size, patch_size))
 print(best_values)
+print(errors)
 final_image = reconstruct_image(best_values)
 print(final_image.shape)
 import matplotlib.pyplot as plt
-plt.imshow(final_image, aspect='auto')
+plt.imshow(final_image, aspect='auto', cmap='gray')
 plt.show()

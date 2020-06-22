@@ -16,7 +16,6 @@ class HarmonyCore(object):
         matrix = np.asarray(matrix).transpose().round(self.obj_func.weight_decimal)
         # print(matrix)
         self.hmm_matrix = matrix
-
     def run(self):
         hmm_err_list = [0] * len(self.hmm_matrix) # Empty error list
         for m_i in range(len(self.hmm_matrix)):
@@ -67,7 +66,7 @@ class HarmonyCore(object):
                     self.hmm_matrix[overwrite_index] = vetor_list
             # else:
             #    print(vetor_list,'worst than',self.hmm_matrix[overwrite_index],'because new error:',error,'higher than',hmm_err_list[overwrite_index])
-        return self.hmm_matrix, hmm_err_list, hmm_err_list.index(min(hmm_err_list))
+        return self.hmm_matrix, hmm_err_list, hmm_err_list.index(min(hmm_err_list)), error
 
 
 class objective_function:
@@ -75,13 +74,13 @@ class objective_function:
     def __init__(self,
                  input_X,
                  input_Y,
-                 iteration=5000,
+                 iteration=1000,
                  weight_decimal=0,
                  sample_size=-1,
                  hmcr_proba=0.7,
                  par_proba=0.3,
                  adju_proba=0.5,
-                 harmony_menmory_size=50,
+                 harmony_menmory_size=40,
                  up_down_limit=None):
 
         self.input_X = input_X
@@ -117,3 +116,8 @@ class objective_function:
         # e /= np.array(input_X).shape[0]
         # print(e)
         return e
+
+    def error_patch(self, source, target):
+        mean = 0.5 * np.abs(np.mean(source) - np.mean(target))
+        std = 0.5 * np.abs(np.std(source) - np.std(target))
+        return mean + std

@@ -8,6 +8,10 @@ import cv2
 from skimage import io, util
 
 
+def patch_center(a):
+    x, y = a.shape[0], a.shape[1]
+    return ((x-1)/2,(y-1)/2)
+
 def img2vector(image):
     """
     Converts image into 1D vector
@@ -69,6 +73,7 @@ def image_preprocess(original, hinted_image):
     ntscIm[:, :, 1] = I
     ntscIm[:, :, 2] = Q
     return colorIm, ntscIm
+
 
 
 def color_space_conversion(gray, color):
