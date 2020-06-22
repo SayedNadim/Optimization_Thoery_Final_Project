@@ -1,33 +1,52 @@
 import numpy as np
-import imageio
-from utils import create_patches, reconstruct_image, image_preprocess, color_space_conversion, error_patch, patch_center
+from HarmonySearch import HarmonyCore
+from objective_function import objective_function
+from utils import *
 
-patch_size = 5
-x_im = imageio.imread('tiger.jpg')
-x_hint = imageio.imread('tiger_color.jpg')
-x_im = np.resize(x_im, (32, 32, 3))
-x_hint = np.resize(x_hint, (32, 32, 3))
-yiq_gray, yiq_color = color_space_conversion(x_im, x_hint)
-M = x_im.shape[0] // patch_size
-N = x_im.shape[1] // patch_size
-yiq_gray_luminance = yiq_gray[:, :, 0]
-yiq_color_luminance = yiq_color[:, :, 0]
-yiq_gray_patches = create_patches(yiq_gray_luminance, patch_size, patch_size)
-yiq_color_patches = create_patches(yiq_color_luminance, patch_size, patch_size)
 
-genes = []
-patches = []
-coordinates = []
-errors = []
-for m in range(M):
-    for n in range(N):
-        target_patches = yiq_gray_patches[m][n]
-        source_coordinate = patch_center(yiq_gray_patches[m][n])
-        error = error_patch(yiq_color_patches[m][n], yiq_gray_patches[m][n])
-        patches.append(target_patches)
-        coordinates.append(source_coordinate)
-        errors.append(error)
+def harmonyfunction(y_gray_patches, y_color_patches, iteration):
+    error = 0
+    for j in range(y_gray_patches.shape[0]):
+        for k in range(y_gray_patches.shape[1]):
+            of = objective_function(y_gray_patches[j][k], y_color_patches[j][k], sample_size=6)
+            hs = HarmonyCore(of)
+            hmm_vector, hmm_err_list, err_idx, err = hs.run()
+            # print('HMM_Vector:', hmm_vector)
+            # print('Best HMM_Vector:', hmm_vector[err_idx])
+            # print('hmm_err_list:', hmm_err_list)
+            # print('err_index:', err_idx, 'hmm_err:', hmm_err_list[err_idx])
+            error += err
+            print('%d th population, %d%d patch error: %0.5f, total error: %0.5f' % (iteration, j, k, err, error))
+            source_patches.append(y_gray_patches[j][k])
+            target_patches.append(y_color_patches[j][k])
+    return source_patches, target_patches, error
 
-genes.append(patches)
-genes.append(coordinates)
-genes.append(sum(errors))
+
+image_gray, y_gray, i_gray, q_gray = read_image('tiger.jpg')
+image_color, y_color, i_color, q_color = read_image('tiger_color.jpg')
+
+# cv2.imshow('i_gray', i_gray)
+# cv2.imshow('i_color', i_color)
+# cv2.waitKey(0)
+#
+
+
+#
+y_gray_patches = create_patches(y_gray, 15, 15)
+y_color_patches = create_patches(y_color, 15, 15)
+# print(y_color_patches.shape)
+# 
+# 
+
+population = 1
+optimizatin_error = []
+source_patches = []
+target_patches = []
+error_run = []
+for i in range(population):
+    source, target, error = harmonyfunction(y_gray_patches, y_color_patches, i)
+    source_patches.append(source)
+    target_patches.append(target)
+    error_run.append(error)
+
+low_error = minimum_index(error_run)

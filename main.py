@@ -1,6 +1,7 @@
-from HarmonySearch import HarmonyCore, objective_function
+from HarmonySearch import HarmonyCore
 from utils import *
 import numpy as np
+from objective_function import objective_function
 
 
 patch_size = 3

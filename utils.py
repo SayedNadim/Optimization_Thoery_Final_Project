@@ -1,4 +1,4 @@
-import numpy as np
+import sys
 import functools
 import operator
 import colorsys
@@ -6,11 +6,20 @@ import imageio
 import skimage
 import cv2
 from skimage import io, util
+import numpy as np
+from sklearn.feature_extraction.image import extract_patches_2d, reconstruct_from_patches_2d
+
+def extract_overlapping_patches(x, patch_size):
+    return extract_patches_2d(x, patch_size)
+
+def reconstruct_from_patches(patches, image_size):
+    return reconstruct_from_patches_2d(patches, image_size)
 
 
 def patch_center(a):
     x, y = a.shape[0], a.shape[1]
-    return ((x-1)/2,(y-1)/2)
+    return ((x - 1) / 2, (y - 1) / 2)
+
 
 def img2vector(image):
     """
@@ -34,6 +43,14 @@ def vecotr2img(vector, shape):
             'A vector of length {vector_length} into an array of shape {shape}'.format(vector_length=len(vector),
                                                                                        shape=shape))
     return np.reshape(a=vector, newshape=shape)
+
+
+def read_image(image_path):
+    img = cv2.imread(image_path).astype(np.float32) / 255.
+    img = cv2.resize(img, (256, 256))
+    yuv_img = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
+    _y, _u, _v = cv2.split(yuv_img)
+    return img, _y, _u, _v
 
 
 def yiq_rgb(y, i, q):
@@ -73,7 +90,6 @@ def image_preprocess(original, hinted_image):
     ntscIm[:, :, 1] = I
     ntscIm[:, :, 2] = Q
     return colorIm, ntscIm
-
 
 
 def color_space_conversion(gray, color):
@@ -126,3 +142,48 @@ def reconstruct_image(patches):
     img_height = patches.shape[0] * patches.shape[2]
     img_width = patches.shape[1] * patches.shape[3]
     return patches.transpose(0, 2, 1, 3).reshape(img_height, img_width)
+
+
+def nested_minimum(list):
+    i_min, j_min = 0, 0
+    minimum = sys.maxsize
+    for i, a in enumerate(list):
+        for j, b in enumerate(a):
+            if b and b < minimum:
+                i_min, j_min, minimum = i, j, b
+    return minimum, i_min, j_min
+
+def minimum_index(errors):
+    i_min, j_min = 0, 0
+    minimum = sys.maxsize
+    for i, a in enumerate(errors):
+        if a and a < minimum:
+            i_min, minimum = i, a
+    return i_min, minimum
+
+def individual_representation(yiq_gray, yiq_color, patch_size=5):
+    # Creating patch_sizeXpatch_size patches from the Y channels
+    yiq_gray_patches = create_patches(yiq_gray, patch_size, patch_size)
+    yiq_color_patches = create_patches(yiq_color, patch_size, patch_size)
+
+    # One individual solution
+    genes = []  # It will hold the patches, coordinates of the source patches and the cumulative fitness value for all patches
+    target_patches = []  # target patches
+    source_patches = []  # source patches
+    coordinates = []  # Center pixel coordinate of the source patches
+    # Number of iterations to calculate all patches
+    M = yiq_gray.shape[0] // patch_size
+    N = yiq_gray.shape[1] // patch_size
+
+    for m in range(M):
+        for n in range(N):
+            target = yiq_gray_patches[m][n]
+            source = yiq_color_patches[m][n]
+            source_coordinate = patch_center(yiq_gray_patches[m][n])
+            target_patches.append(target)
+            source_patches.append(source)
+            coordinates.append(source_coordinate)
+    genes.append(source_patches)
+    genes.append(target_patches)
+    genes.append(coordinates)
+    return genes, M, N
