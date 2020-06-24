@@ -24,13 +24,13 @@ def main():
     image_gray, y_gray, i_gray, q_gray = read_image('images/lena_gray.png', size=size)
     image_color, y_color, i_color, q_color = read_image('images/lena.png', size=size)
 
-    population = 20
+    total_run = 20
     error_i = []
     error_q = []
     i_set = []
     q_set = []
     start = time.time()
-    for i in range(population):
+    for i in range(total_run):
         i_c, e_i = harmonyfunction(i_color, i, i_or_q='i')
         q_c, e_q = harmonyfunction(q_color, i, i_or_q='q')
         i_set.append(i_c)
