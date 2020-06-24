@@ -21,8 +21,8 @@ def harmonyfunction(y_color_patches, iteration, i_or_q='i'):
 
 def main():
     size = (256, 256)
-    image_gray, y_gray, i_gray, q_gray = read_image('lena_gray.png', size=size)
-    image_color, y_color, i_color, q_color = read_image('lena.png', size=size)
+    image_gray, y_gray, i_gray, q_gray = read_image('images/lena_gray.png', size=size)
+    image_color, y_color, i_color, q_color = read_image('images/lena.png', size=size)
 
     population = 20
     error_i = []
