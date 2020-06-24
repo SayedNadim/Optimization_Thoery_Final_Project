@@ -9,8 +9,10 @@ from skimage import io, util
 import numpy as np
 from sklearn.feature_extraction.image import extract_patches_2d, reconstruct_from_patches_2d
 
+
 def extract_overlapping_patches(x, patch_size):
     return extract_patches_2d(x, patch_size)
+
 
 def reconstruct_from_patches(patches, image_size):
     return reconstruct_from_patches_2d(patches, image_size)
@@ -45,12 +47,31 @@ def vecotr2img(vector, shape):
     return np.reshape(a=vector, newshape=shape)
 
 
-def read_image(image_path):
+def read_image(image_path, size):
     img = cv2.imread(image_path).astype(np.float32) / 255.
-    img = cv2.resize(img, (256, 256))
+    img = cv2.resize(img, size)
     yuv_img = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
     _y, _u, _v = cv2.split(yuv_img)
     return img, _y, _u, _v
+
+
+def image_preprocess(original, hinted_image):
+    """
+    Takes original as well as hinted image and performs colorspace conversion.
+    :param original: Original grayscale image
+    :param hinted_image: Grayscale image with user scrabbles
+    :return: Difference image and YIQ (YUV) colorspace image
+    """
+    original = original.astype(float) / 255
+    hinted_image = hinted_image.astype(float) / 255
+    colorIm = abs(original - hinted_image).sum(2) > 0.01
+    (Y, _, _) = colorsys.rgb_to_yiq(original[:, :, 0], original[:, :, 1], original[:, :, 2])
+    (_, I, Q) = colorsys.rgb_to_yiq(hinted_image[:, :, 0], hinted_image[:, :, 1], hinted_image[:, :, 2])
+    ntscIm = np.zeros(original.shape)
+    ntscIm[:, :, 0] = Y
+    ntscIm[:, :, 1] = I
+    ntscIm[:, :, 2] = Q
+    return colorIm, ntscIm
 
 
 def yiq_rgb(y, i, q):
@@ -73,41 +94,16 @@ def yiq_rgb(y, i, q):
     return (r_raw, g_raw, b_raw)
 
 
-def image_preprocess(original, hinted_image):
-    """
-    Takes original as well as hinted image and performs colorspace conversion.
-    :param original: Original grayscale image
-    :param hinted_image: Grayscale image with user scrabbles
-    :return: Difference image and YIQ (YUV) colorspace image
-    """
-    original = original.astype(float) / 255
-    hinted_image = hinted_image.astype(float) / 255
-    colorIm = abs(original - hinted_image).sum(2) > 0.01
-    (Y, _, _) = colorsys.rgb_to_yiq(original[:, :, 0], original[:, :, 1], original[:, :, 2])
-    (_, I, Q) = colorsys.rgb_to_yiq(hinted_image[:, :, 0], hinted_image[:, :, 1], hinted_image[:, :, 2])
-    ntscIm = np.zeros(original.shape)
-    ntscIm[:, :, 0] = Y
-    ntscIm[:, :, 1] = I
-    ntscIm[:, :, 2] = Q
-    return colorIm, ntscIm
-
-
-def color_space_conversion(gray, color):
+def color_space_conversion(image, shape):
+    gray = imageio.imread(image)
+    # gray = np.resize(gray, shape)
     gray = gray.astype(float) / 255
-    color = color.astype(float) / 255
-    (Y_gray, _, _) = colorsys.rgb_to_yiq(gray[:, :, 0], gray[:, :, 1], gray[:, :, 2])
-    (_, I_gray, Q_gray) = colorsys.rgb_to_yiq(gray[:, :, 0], gray[:, :, 1], gray[:, :, 2])
-    (Y_color, _, _) = colorsys.rgb_to_yiq(color[:, :, 0], color[:, :, 1], color[:, :, 2])
-    (_, I_color, Q_color) = colorsys.rgb_to_yiq(color[:, :, 0], color[:, :, 1], color[:, :, 2])
+    (Y_gray, I_gray, Q_gray) = colorsys.rgb_to_yiq(gray[:, :, 0], gray[:, :, 1], gray[:, :, 2])
     yiq_gray = np.zeros(gray.shape)
-    yiq_color = np.zeros(color.shape)
     yiq_gray[:, :, 0] = Y_gray
     yiq_gray[:, :, 1] = I_gray
     yiq_gray[:, :, 2] = Q_gray
-    yiq_color[:, :, 0] = Y_color
-    yiq_color[:, :, 1] = I_color
-    yiq_color[:, :, 2] = Q_color
-    return yiq_gray, yiq_color
+    return yiq_gray, Y_gray, I_gray, Q_gray
 
 
 def error_patch(target, source):
@@ -153,6 +149,7 @@ def nested_minimum(list):
                 i_min, j_min, minimum = i, j, b
     return minimum, i_min, j_min
 
+
 def minimum_index(errors):
     i_min, j_min = 0, 0
     minimum = sys.maxsize
@@ -160,6 +157,7 @@ def minimum_index(errors):
         if a and a < minimum:
             i_min, minimum = i, a
     return i_min, minimum
+
 
 def individual_representation(yiq_gray, yiq_color, patch_size=5):
     # Creating patch_sizeXpatch_size patches from the Y channels
@@ -187,3 +185,27 @@ def individual_representation(yiq_gray, yiq_color, patch_size=5):
     genes.append(target_patches)
     genes.append(coordinates)
     return genes, M, N
+
+#
+# def harmonyfunction(y_gray_patches, y_color_patches, iteration):
+#     error = 0
+#     for j in range(y_gray_patches.shape[0]):
+#         for k in range(y_gray_patches.shape[1]):
+#             of = objective_function(y_gray_patches[j][k], y_color_patches[j][k], sample_size=6)
+#             hs = HarmonyCore(of)
+#             hmm_vector, hmm_err_list, err_idx, err = hs.run()
+#             # print('HMM_Vector:', hmm_vector)
+#             # print('Best HMM_Vector:', hmm_vector[err_idx])
+#             # print('hmm_err_list:', hmm_err_list)
+#             # print('err_index:', err_idx, 'hmm_err:', hmm_err_list[err_idx])
+#             error += err
+#             print('%d th population, %d%d patch error: %0.5f, total error: %0.5f' % (iteration, j, k, err, error))
+#             source_patches.append(y_gray_patches[j][k])
+#             target_patches.append(y_color_patches[j][k])
+#     return source_patches, target_patches, error
+
+
+
+# img = cv2.imread('lena.png')
+# img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# cv2.imwrite('lena_gray.png', img_gray)

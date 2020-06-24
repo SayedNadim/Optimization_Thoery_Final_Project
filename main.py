@@ -1,62 +1,65 @@
-from HarmonySearch import HarmonyCore
-from utils import *
 import numpy as np
+from HarmonySearch import HarmonyCore
 from objective_function import objective_function
+from utils import *
+import time
 
 
-patch_size = 3
-x_im = imageio.imread('baby.bmp')
-x_hint = imageio.imread('baby_marked.bmp')
-x_im = np.resize(x_im, (16, 16, 3))
-x_hint = np.resize(x_hint, (16, 16, 3))
-yiq_gray, yiq_color = color_space_conversion(x_im, x_hint)
-M = x_im.shape[0] // patch_size
-N = x_im.shape[1] // patch_size
-yiq_gray_luminance = yiq_gray[:, :, 0]
-yiq_color_luminance = yiq_color[:, :, 0]
-yiq_gray_patches = create_patches(yiq_gray_luminance, patch_size, patch_size)
-yiq_color_patches = create_patches(yiq_color_luminance, patch_size, patch_size)
+def harmonyfunction(y_color_patches, iteration, i_or_q='i'):
+    error = 0
+    of = objective_function(y_color_patches, sample_size=6)
+    hs = HarmonyCore(of)
+    hmm_vector, hmm_err_list, err_idx, err = hs.run()
+    error += err
+    best = hmm_vector[err_idx]
+    if i_or_q == 'i':
+        print('i color space - %d th population,  error: %0.5f' % (iteration, err))
+    elif i_or_q == 'q':
+        print('q color space - %d th population,  error: %0.5f' % (iteration, err))
+    return best, error
 
-gray_array = []
-color_array = []
 
-# for i in range(M):
-#     for j in range(N):
-#         grays = img2vector(yiq_gray_patches[i][j])
-#         colors = img2vector(yiq_color_patches[i][j])
-#         gray_array.append(grays)
-#         color_array.append(colors)
-#
-# print(len(gray_array))
+def main():
+    size = (256, 256)
+    image_gray, y_gray, i_gray, q_gray = read_image('lena_gray.png', size=size)
+    image_color, y_color, i_color, q_color = read_image('lena.png', size=size)
 
-best_values = []
-errors = []
-for i in range(M):
-    for j in range(N):
-        of = objective_function(yiq_gray_patches[i][j], yiq_color_patches[i][j], sample_size=6, weight_decimal=2, )
-        hs = HarmonyCore(of)
-        '''
-        run harmony
-        hs.run()
-        '''
-        hmm_vector, hmm_err_list, err_idx, error = hs.run()
-        best_values.append(hmm_vector[err_idx])
-        errors.append(error)
+    population = 20
+    error_i = []
+    error_q = []
+    i_set = []
+    q_set = []
+    start = time.time()
+    for i in range(population):
+        i_c, e_i = harmonyfunction(i_color, i, i_or_q='i')
+        q_c, e_q = harmonyfunction(q_color, i, i_or_q='q')
+        i_set.append(i_c)
+        q_set.append(q_c)
+        error_i.append(e_i)
+        error_q.append(e_q)
 
-        '''
-        then you can get (hmm_vector,hmm_err_list,err_idx) after hs return.
-        '''
-        # print('HMM_Vector:', hmm_vector)
-        print('Best HMM_Vector:', hmm_vector[err_idx])
-        # print('hmm_err_list:', hmm_err_list)
-        # print('err_index:', err_idx, 'hmm_err:', hmm_err_list[err_idx])
-        print('{}{}th patch done'.format(i, j))
+    min_i, min_error_i = minimum_index(error_i)
+    print(min_error_i, min_i)
+    min_q, min_error_q = minimum_index(error_q)
+    print(min_error_q, min_q)
 
-best_values = np.reshape(best_values, (M, N, patch_size, patch_size))
-print(best_values)
-print(errors)
-final_image = reconstruct_image(best_values)
-print(final_image.shape)
-import matplotlib.pyplot as plt
-plt.imshow(final_image, aspect='auto', cmap='gray')
-plt.show()
+    i_error = np.mean(i_color - i_set[min_i])
+    q_error = np.mean(q_color - q_set[min_q])
+    print(i_error, q_error)
+    print(i_color)
+    print(i_set[min_i])
+
+    result = cv2.merge((y_gray.astype(np.float32), i_set[min_i].astype(np.float32), q_set[min_q].astype(np.float32)))
+    result = cv2.cvtColor(result, cv2.COLOR_YUV2BGR)
+    mean_error = np.mean(np.abs(image_color - result))
+    print(mean_error * 100)
+    end = time.time()
+    print("total time: {}".format(end - start))
+
+    cv2.imwrite('colorized_lena.png', (result * 255).astype(np.uint))
+    import matplotlib.pyplot as plt
+    plt.imshow((result * 255.0).astype(np.int), aspect='auto')
+    plt.show()
+
+if __name__ == '__main__':
+    main()
