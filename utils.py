@@ -49,7 +49,7 @@ def vecotr2img(vector, shape):
 
 def read_image(image_path, size):
     img = cv2.imread(image_path).astype(np.float32) / 255.
-    img = cv2.resize(img, size)
+    img = cv2.resize(img, size, interpolation = cv2.INTER_CUBIC)
     yuv_img = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
     _y, _u, _v = cv2.split(yuv_img)
     return img, _y, _u, _v

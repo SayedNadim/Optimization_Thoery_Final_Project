@@ -5,13 +5,13 @@ class objective_function(object):
 
     def __init__(self,
                  input_Y,
-                 iteration=5000,
+                 iteration=8000,
                  weight_decimal=0,
                  sample_size=-1,
                  hmcr_proba=0.7,
                  par_proba=0.3,
-                 adju_proba=0.5,
-                 harmony_memory_size=40,
+                 adju_proba=0.4,
+                 harmony_memory_size=20,
                  up_down_limit=None):
         super(objective_function, self).__init__()
 

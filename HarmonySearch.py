@@ -11,8 +11,10 @@ class HarmonyCore(object):
         self.hmm_matrix = list()  # Harmony matrix
         self.matrix_size = self.obj_func.matrix_size
         matrix = np.random.uniform(0, 0.5, size=(self.matrix_size[0], self.matrix_size[1], self.obj_func.harmony_memory_size))
+        matrix = matrix.round(decimals=2)
         matrix = np.asarray(matrix).transpose()
         self.hmm_matrix = matrix
+        # print(self.hmm_matrix)
 
     def run(self):
         error = 0
@@ -36,13 +38,13 @@ class HarmonyCore(object):
                                 new_matrix -= (new_matrix - self.obj_func.up_down_limit[i][j][0]) * np.random.rand(1, )[0]
                             else:
                                 new_matrix += (self.obj_func.up_down_limit[i][j][0] - new_matrix) * np.random.rand(1, )[0]
-                        matrix_list[i][j] = new_matrix
+                        matrix_list[i][j] = round(new_matrix, 2)
                     else:
                         new_matrix = \
                             np.random.uniform(low=self.obj_func.up_down_limit[i][j][0],
                                               high=self.obj_func.up_down_limit[i][j][1],
                                               size=(1,))[0]
-                        matrix_list[i][j] = new_matrix
+                        matrix_list[i][j] = round(new_matrix, 2)
 
             # Random Selection Sample
             if self.obj_func.sample_size > 0:
@@ -54,7 +56,7 @@ class HarmonyCore(object):
             if hmm_err_list[overwrite_index] >= error:
                 for i in range(np.asarray(matrix_list).shape[0]):
                     for j in range(np.asarray(matrix_list).shape[1]):
-                        matrix_list[i][j] = matrix_list[i][j]
+                        matrix_list[i][j] = round(matrix_list[i][j], 2)
                 if not matrix_list in self.hmm_matrix.tolist():
                     hmm_err_list[overwrite_index] = error
                     self.hmm_matrix[overwrite_index] = matrix_list
