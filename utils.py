@@ -55,6 +55,7 @@ def read_image(image_path, size):
     return img, _y, _u, _v
 
 
+
 def image_preprocess(original, hinted_image):
     """
     Takes original as well as hinted image and performs colorspace conversion.
